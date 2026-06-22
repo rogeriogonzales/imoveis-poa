@@ -128,7 +128,7 @@ LENTES.forEach((L0,i)=>{const btn=document.createElement('button');btn.className
 fetch('bairros.geojson').then(r=>r.json()).then(g=>{geo=g;redraw();});
 
 // ===== Chat IA (Nemotron) — clica e pergunta; gated até o endpoint existir =====
-const ENDPOINT='__NEMOENDPOINT__';   // preenchido quando o worker estiver no ar
+const ENDPOINT='https://nemotron-poa.rogerio-gonzales.workers.dev';   // preenchido quando o worker estiver no ar
 const SUG=['Quais as melhores oportunidades?','Onde o preço mais cresceu?','Onde tem mais desconto?','Compare Moinhos de Vento e Petrópolis','Onde tem mais liquidez (giro)?'];
 const chipsEl=document.getElementById('chips');
 SUG.forEach(s=>{const x=document.createElement('button');x.className='chip2';x.textContent=s;x.onclick=()=>{document.getElementById('cq').value=s;ask();};chipsEl.appendChild(x);});
