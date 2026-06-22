@@ -122,6 +122,8 @@ def main():
         if len(arr) >= 3:
             by_bairro[bairro][lg] = arr
     for bairro, logs in by_bairro.items():
+        if not slug(bairro):   # bairro em branco -> ignora
+            continue
         (outdir / f"{slug(bairro)}.json").write_text(
             json.dumps(logs, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     tot = sum(p.stat().st_size for p in outdir.glob("*.json"))
