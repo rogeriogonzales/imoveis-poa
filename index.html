@@ -114,7 +114,10 @@ ul{margin:6px 0 12px;padding-left:20px}li{margin:5px 0;color:#d6dbe4}
 <div id="modal" class="modal">
   <div class="mbox">
     <div class="mhead"><div><h3 id="mtitle"></h3><span class="mut" id="msub"></span></div><button class="x" onclick="closeModal()">✕</button></div>
-    <div class="scroll mscroll"><table id="mtable"><thead><tr><th>Nº</th><th>Área</th><th>Valor</th><th>R$/m²</th><th>Data</th></tr></thead><tbody></tbody></table></div>
+    <div class="scroll mscroll"><table id="mtable"><thead><tr>
+      <th>Nº</th><th>Unid</th><th>Tipo</th><th>Área</th><th>Ano</th><th>Pav</th><th>Valor</th><th>R$/m²</th>
+      <th>Venal</th><th>Prêmio</th><th>IPTU/ano</th><th>Data</th><th>Matrícula</th>
+    </tr></thead><tbody></tbody></table></div>
     <div class="mfoot"><button class="btn" onclick="baixarCSV()">⬇ Baixar CSV destas vendas</button></div>
   </div>
 </div>
@@ -146,26 +149,30 @@ function renderL(){
 }
 document.getElementById('fl').oninput=renderL;
 document.querySelector('#tl tbody').addEventListener('click',e=>{const tr=e.target.closest('tr');if(tr)openVendas(tr.dataset.b,tr.dataset.l);});
-// --- modal de vendas (lazy fetch) ---
-let VENDAS=null;
-async function ensureVendas(){ if(VENDAS)return VENDAS; document.getElementById('msub').textContent='carregando...'; const r=await fetch('vendas.json'); VENDAS=await r.json(); return VENDAS; }
+// --- modal de vendas (fatiado por bairro, lazy) ---
+// rec: 0nº 1unid 2compl 3tipo 4ano 5área 6valor 7rs 8data 9matrícula 10cep 11pav 12uso 13venal 14iptu 15prêmio
+const slug=b=>b.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+const SHARD={};
+async function loadShard(b){const s=slug(b);if(SHARD[s])return SHARD[s];const r=await fetch('vendas/'+s+'.json');SHARD[s]=r.ok?await r.json():{};return SHARD[s];}
+function tShort(t){t=(t||'').toUpperCase();if(t.includes('COBERTURA'))return'Cobertura';if(t.includes('APARTAMENTO'))return'Apto';if(t.includes('CASA')||t.includes('RESIDENC'))return'Casa';return t?t.slice(0,12):'—';}
 async function openVendas(bairro,log){
   document.getElementById('mtitle').textContent=log+' · '+bairro;
   document.getElementById('msub').textContent='carregando...';
   document.querySelector('#mtable tbody').innerHTML='';
   document.getElementById('modal').style.display='flex';
-  const v=await ensureVendas();
-  const arr=(v[bairro+'|'+log]||[]).slice().sort((a,b)=>(b[4]||'').localeCompare(a[4]||''));
+  const data=await loadShard(bairro);
+  const arr=(data[log]||[]).slice().sort((a,b)=>(b[8]||'').localeCompare(a[8]||''));
   document.querySelector('#mtable tbody').innerHTML=arr.map(s=>
-    `<tr><td>${s[0]||'—'}</td><td>${s[1]} m²</td><td>R$ ${fmt(s[2])}</td><td>${fmt(s[3])}</td><td>${s[4]||'—'}</td></tr>`).join('');
-  document.getElementById('msub').textContent=arr.length+' vendas reais (ITBI) nesta rua';
+    `<tr><td>${s[0]||'—'}</td><td>${s[1]||'—'}</td><td>${tShort(s[3])}</td><td>${s[5]} m²</td><td>${s[4]||'—'}</td><td>${s[11]||'—'}</td><td>R$ ${fmt(s[6])}</td><td>${fmt(s[7])}</td><td>${s[13]?'R$ '+fmt(s[13]):'—'}</td><td class="premio">${s[15]?s[15].toFixed(2)+'×':'—'}</td><td>${s[14]?'R$ '+fmt(s[14]):'—'}</td><td>${s[8]||'—'}</td><td>${s[9]||'—'}</td></tr>`).join('');
+  document.getElementById('msub').textContent=arr.length+' vendas reais (ITBI) · cruzadas com IPTU (96% têm venal/pavimento)';
   window.__cur={bairro,log,arr};
 }
 function closeModal(){document.getElementById('modal').style.display='none';}
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
 function baixarCSV(){
-  const c=window.__cur; if(!c||!c.arr)return;
-  const csv='numero;area_m2;valor;rs_m2;data\n'+c.arr.map(s=>s.join(';')).join('\n');
+  const c=window.__cur;if(!c||!c.arr)return;
+  const H='numero;unidade;complemento;tipo;ano_construcao;area_m2;valor;rs_m2;data;matricula;cep;pavimento;uso;venal;iptu_ano;premio_unidade';
+  const csv=H+'\n'+c.arr.map(s=>s.map(x=>x==null?'':String(x).replace(/;/g,',')).join(';')).join('\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
   a.download=('vendas_'+c.log+'_'+c.bairro+'.csv').replace(/[^\w]+/g,'_');a.click();
 }
