@@ -9,10 +9,16 @@ Saídas: data/poa/poa_baseline_bairro.csv  +  data/poa/poa_baseline_logradouro.c
 Run: python poa_itbi.py
 """
 import csv
-import glob
+import json
 import statistics as st
+import unicodedata
 from collections import Counter, defaultdict
 from pathlib import Path
+
+
+def norm(s):
+    s = unicodedata.normalize("NFKD", (s or "")).encode("ascii", "ignore").decode().upper()
+    return " ".join(s.replace("'", "").split())
 
 DATA = Path(__file__).resolve().parent.parent / "data" / "poa"
 ANOS = ["2023", "2024", "2025", "2026"]   # recência (como o 2021+ do Rio)
@@ -68,6 +74,7 @@ def main():
 
     by_bairro = defaultdict(list)
     by_log = defaultdict(list)
+    vendas = defaultdict(list)   # (bairro, log) norm -> [[num, area, valor, rs, data], ...]
     n_ok = 0
     for r in rows:
         if not is_resid(r.get("finalidade_construcao")):
@@ -85,6 +92,9 @@ def main():
         by_bairro[bairro].append(rs)
         if log:
             by_log[(bairro, log)].append(rs)
+            data = (r.get("data_pagamento") or r.get("data_estimativa") or "")[:10]
+            vendas[f"{norm(bairro)}|{norm(log)}"].append(
+                [r.get("n_endereco", "").strip("'"), round(area), round(base), round(rs), data])
         n_ok += 1
     print(f"\nTransações residenciais válidas: {n_ok:,}".replace(",", "."))
 
@@ -109,7 +119,11 @@ def main():
                 continue
             w.writerow([b, lg, len(vals), round(st.median(vals))])
 
-    print(f"\nGravado: {out_b}\n         {out_l}")
+    # vendas individuais por logradouro (para o popup do site)
+    out_v = DATA / "poa_vendas_logradouro.json"
+    out_v.write_text(json.dumps({k: v for k, v in vendas.items() if len(v) >= 3},
+                                ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    print(f"\nGravado: {out_b}\n         {out_l}\n         {out_v} ({round(out_v.stat().st_size/1e6,1)} MB)")
     print("\n=== TOP 15 bairros por R$/m² real (mediana, residencial) ===")
     print(f"{'bairro':28} {'n':>6} {'mediana':>10} {'p25':>9} {'p75':>9}")
     ranked = [(b, v) for b, v in by_bairro.items() if len(v) >= 20]
