@@ -28,6 +28,9 @@ python scripts/poa_itbi.py
 
 # 3. cruza com o IPTU -> prêmio de mercado, giro, custo de carrego
 python scripts/poa_cross.py
+
+# 4. (opcional) vendas individuais enriquecidas por logradouro (ITBI + IPTU por imóvel)
+python scripts/poa_vendas.py
 ```
 
 Saídas (em `data/poa/`):
