@@ -22,6 +22,18 @@ a{color:var(--acc)}section{padding:22px 0;border-top:1px solid var(--line)}h2{fo
 .legend{background:#11141aee;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--mut);line-height:1.7}
 .legend i{width:14px;height:10px;display:inline-block;margin-right:6px;border-radius:2px;vertical-align:middle}
 .foot{padding:24px 0 60px;color:var(--mut);font-size:13px}
+.chatbtn{position:fixed;bottom:20px;right:20px;background:var(--acc);color:#06131f;border:none;border-radius:30px;padding:12px 18px;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 4px 16px #0007;z-index:1000}
+.chatpanel{position:fixed;bottom:78px;right:20px;width:390px;max-width:94vw;height:540px;max-height:80vh;background:#11141a;border:1px solid var(--line);border-radius:14px;display:none;flex-direction:column;z-index:1000;box-shadow:0 10px 34px #0009}
+.chatpanel.open{display:flex}
+.chathead{padding:12px 14px;border-bottom:1px solid var(--line);font-weight:700;display:flex;justify-content:space-between;align-items:center;font-size:14px}
+.chatlog{flex:1;overflow:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px;font-size:13.5px}
+.msg{padding:9px 12px;border-radius:10px;max-width:92%}
+.msg.u{background:#1a2230;align-self:flex-end}.msg.a{background:var(--card);border:1px solid var(--line);align-self:flex-start;white-space:pre-wrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px 8px}
+.chip2{background:var(--card);border:1px solid var(--line);color:var(--acc);border-radius:14px;padding:5px 10px;font-size:12px;cursor:pointer}
+.chatin{display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--line)}
+.chatin input{flex:1;background:var(--card);border:1px solid var(--line);color:#e6e9ef;border-radius:8px;padding:9px}
+.chatin button{background:var(--acc);color:#06131f;border:none;border-radius:8px;padding:9px 14px;font-weight:700;cursor:pointer}
 </style></head><body><div class="wrap">
 
 <header>
@@ -96,5 +108,27 @@ const lc=document.getElementById('lentes');
 LENTES.forEach((L0,i)=>{const btn=document.createElement('button');btn.className='lente'+(i===1?' on':'');btn.textContent=L0.label;
  btn.onclick=()=>{lente=L0;document.querySelectorAll('.lente').forEach(b=>b.classList.remove('on'));btn.classList.add('on');redraw();};lc.appendChild(btn);});
 fetch('bairros.geojson').then(r=>r.json()).then(g=>{geo=g;redraw();});
+
+// ===== Chat IA (Nemotron) — clica e pergunta; gated até o endpoint existir =====
+const ENDPOINT='__NEMOENDPOINT__';   // preenchido quando o worker estiver no ar
+const SUG=['Quais as melhores oportunidades?','Onde o preço mais cresceu?','Onde tem mais desconto?','Compare Moinhos de Vento e Petrópolis','Onde tem mais liquidez (giro)?'];
+const chipsEl=document.getElementById('chips');
+SUG.forEach(s=>{const x=document.createElement('button');x.className='chip2';x.textContent=s;x.onclick=()=>{document.getElementById('cq').value=s;ask();};chipsEl.appendChild(x);});
+function addMsg(t,cls){const d=document.createElement('div');d.className='msg '+cls;d.textContent=t;const log=document.getElementById('clog');log.appendChild(d);log.scrollTop=log.scrollHeight;return d;}
+async function ask(){
+ const inp=document.getElementById('cq');const q=inp.value.trim();if(!q)return;inp.value='';addMsg(q,'u');
+ if(!ENDPOINT||ENDPOINT.indexOf('__')>=0){addMsg('A IA ainda não está conectada (falta a chave NVIDIA + publicar o endpoint). O resto da página já funciona — em breve ligamos isto.','a');return;}
+ const w=addMsg('pensando…','a');
+ try{const r=await fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q,contexto:JSON.stringify(INS)})});
+  const j=await r.json();w.textContent=j.answer||'sem resposta';}
+ catch(e){w.textContent='erro de conexão com a IA';}
+}
 </script>
+<button class="chatbtn" onclick="document.getElementById('cp').classList.toggle('open')">💬 Perguntar à IA</button>
+<div class="chatpanel" id="cp">
+  <div class="chathead">Análise IA · Nemotron 3 Ultra <span style="cursor:pointer;color:var(--mut)" onclick="document.getElementById('cp').classList.remove('open')">✕</span></div>
+  <div class="chatlog" id="clog"><div class="msg a">Pergunte sobre o mercado de POA — ou clique numa sugestão abaixo.</div></div>
+  <div class="chips" id="chips"></div>
+  <div class="chatin"><input id="cq" placeholder="ex.: melhores oportunidades até R$8k/m²" onkeydown="if(event.key==='Enter')ask()"><button onclick="ask()">→</button></div>
+</div>
 </body></html>
