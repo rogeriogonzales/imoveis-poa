@@ -30,7 +30,8 @@ ul{margin:6px 0 12px;padding-left:20px}li{margin:5px 0;color:#d6dbe4}
 .btn.big{background:var(--acc);color:#06131f}
 .foot{padding:24px 0 60px;color:var(--mut);font-size:13px}a{color:var(--acc)}.scroll{overflow-x:auto}
 .modal{display:none;position:fixed;inset:0;background:#0008;backdrop-filter:blur(3px);align-items:center;justify-content:center;z-index:50;padding:18px}
-.mbox{background:#11141a;border:1px solid var(--line);border-radius:14px;max-width:760px;width:100%;max-height:86vh;display:flex;flex-direction:column}
+.mbox{background:#11141a;border:1px solid var(--line);border-radius:14px;max-width:1180px;width:96vw;max-height:88vh;display:flex;flex-direction:column}
+.mscroll table{font-size:12.5px}.mscroll th,.mscroll td{padding:5px 8px;white-space:nowrap}.mscroll a{color:var(--acc);text-decoration:none}.mscroll a:hover{text-decoration:underline}
 .mhead{display:flex;justify-content:space-between;align-items:flex-start;padding:16px 18px;border-bottom:1px solid var(--line)}
 .mhead h3{font-size:16px}.x{background:none;border:none;color:var(--mut);font-size:20px;cursor:pointer}
 .mscroll{overflow:auto;padding:0 18px}.mfoot{padding:14px 18px;border-top:1px solid var(--line)}
@@ -115,10 +116,10 @@ ul{margin:6px 0 12px;padding-left:20px}li{margin:5px 0;color:#d6dbe4}
   <div class="mbox">
     <div class="mhead"><div><h3 id="mtitle"></h3><span class="mut" id="msub"></span></div><button class="x" onclick="closeModal()">✕</button></div>
     <div class="scroll mscroll"><table id="mtable"><thead><tr>
-      <th>Nº</th><th>Unid</th><th>Tipo</th><th>Área</th><th>Ano</th><th>Pav</th><th>Valor</th><th>R$/m²</th>
-      <th>Venal</th><th>Prêmio</th><th>IPTU/ano</th><th>Data</th><th>Matrícula</th>
+      <th>Endereço 📍</th><th>Tipo</th><th>Área</th><th>Ano</th><th>Pav</th><th>Valor</th><th>R$/m²</th>
+      <th>Venal</th><th>Prêmio</th><th>IPTU/ano</th><th>CEP</th><th>Data</th><th>Matrícula ↗</th>
     </tr></thead><tbody></tbody></table></div>
-    <div class="mfoot"><button class="btn" onclick="baixarCSV()">⬇ Baixar CSV destas vendas</button></div>
+    <div class="mfoot"><button class="btn" onclick="baixarCSV()">⬇ Baixar CSV destas vendas</button><span class="mut" style="margin-left:14px;font-size:12px">📍 endereço abre no Google Maps · ↗ matrícula leva ao pedido de certidão oficial (ONR, paga)</span></div>
   </div>
 </div>
 
@@ -162,8 +163,14 @@ async function openVendas(bairro,log){
   document.getElementById('modal').style.display='flex';
   const data=await loadShard(bairro);
   const arr=(data[log]||[]).slice().sort((a,b)=>(b[8]||'').localeCompare(a[8]||''));
-  document.querySelector('#mtable tbody').innerHTML=arr.map(s=>
-    `<tr><td>${s[0]||'—'}</td><td>${s[1]||'—'}</td><td>${tShort(s[3])}</td><td>${s[5]} m²</td><td>${s[4]||'—'}</td><td>${s[11]||'—'}</td><td>R$ ${fmt(s[6])}</td><td>${fmt(s[7])}</td><td>${s[13]?'R$ '+fmt(s[13]):'—'}</td><td class="premio">${s[15]?s[15].toFixed(2)+'×':'—'}</td><td>${s[14]?'R$ '+fmt(s[14]):'—'}</td><td>${s[8]||'—'}</td><td>${s[9]||'—'}</td></tr>`).join('');
+  const MAT='https://registradores.onr.org.br/CertidaoDigital/frmPedidosCertidao.aspx?from=menu&digital=1';
+  const mapsURL=num=>'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(log+' '+num+', '+bairro+', Porto Alegre RS');
+  document.querySelector('#mtable tbody').innerHTML=arr.map(s=>{
+    const end='nº '+(s[0]||'—')+(s[2]?', '+s[2]:'')+(s[1]?' / un '+s[1]:'');
+    const endCell='<a href="'+mapsURL(s[0]||'')+'" target="_blank" rel="noopener">'+end+'</a>';
+    const matCell=s[9]?'<a href="'+MAT+'" target="_blank" rel="noopener" title="pedir certidão oficial (paga) por matrícula/endereço no ONR">'+s[9]+' ↗</a>':'—';
+    return '<tr><td>'+endCell+'</td><td>'+tShort(s[3])+'</td><td>'+s[5]+' m²</td><td>'+(s[4]||'—')+'</td><td>'+(s[11]||'—')+'</td><td>R$ '+fmt(s[6])+'</td><td>'+fmt(s[7])+'</td><td>'+(s[13]?'R$ '+fmt(s[13]):'—')+'</td><td class="premio">'+(s[15]?s[15].toFixed(2)+'×':'—')+'</td><td>'+(s[14]?'R$ '+fmt(s[14]):'—')+'</td><td>'+(s[10]||'—')+'</td><td>'+(s[8]||'—')+'</td><td>'+matCell+'</td></tr>';
+  }).join('');
   document.getElementById('msub').textContent=arr.length+' vendas reais (ITBI) · cruzadas com IPTU (96% têm venal/pavimento)';
   window.__cur={bairro,log,arr};
 }
