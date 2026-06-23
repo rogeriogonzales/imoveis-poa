@@ -29,7 +29,9 @@ td img{height:30px;width:42px;object-fit:cover;border-radius:4px;vertical-align:
 <select id="ff"><option value="">fonte: todas</option></select>
 <select id="fv"><option value="">IA: todas</option><option value="forte">forte</option><option value="media">média</option><option value="fraca">fraca</option></select>
 <select id="fa"><option value="">status: todos</option><option value="1">ativo</option><option value="0">saiu</option></select>
-<select id="fp"><option value="">preço: todos</option><option value="400000">≤400k</option><option value="300000">≤300k</option></select>
+<select id="fp"><option value="">faixa: todas</option><option value="0-400000">≤ 400k</option><option value="400000-700000">400–700k</option><option value="700000-1000000">700k–1M</option><option value="1000000-1500000">1–1,5M</option><option value="1500000-99000000">&gt; 1,5M</option></select>
+<input type="number" id="fpmin" placeholder="mín R$" style="width:95px">
+<input type="number" id="fpmax" placeholder="máx R$" style="width:95px">
 <button id="csv">⬇ CSV</button><span class="cnt" id="cnt2"></span></div>
 <div class="tw"><table id="t"><thead><tr></tr></thead><tbody></tbody></table></div>
 <script>
@@ -61,16 +63,19 @@ COLS.forEach(c=>{const th=document.createElement('th');th.textContent=c.t;if(c.l
 [...new Set(DATA.map(d=>d.bairro))].sort().forEach(b=>fb.add(new Option(b,b)));
 [...new Set(DATA.map(d=>d.fonte))].sort().forEach(f=>ff.add(new Option(f,f)));
 function filtered(){const q=document.getElementById('q').value.toLowerCase(),b=fb.value,f=ff.value,v=fv.value,a=fa.value,p=fp.value;
+ const pmin=+document.getElementById('fpmin').value||0,pmax=+document.getElementById('fpmax').value||Infinity;
+ let blo=0,bhi=Infinity;if(p){const s=p.split('-');blo=+s[0];bhi=+s[1];}
+ const lo=Math.max(pmin,blo),hi=Math.min(pmax,bhi);
  return DATA.filter(d=>{
   if(b&&d.bairro!==b)return false;if(f&&d.fonte!==f)return false;if(v&&d.ver!==v)return false;
-  if(a!==''&&d.ativo!=+a)return false;if(p&&d.preco>+p)return false;
+  if(a!==''&&d.ativo!=+a)return false;if(d.preco<lo||d.preco>hi)return false;
   if(q&&!((d.bairro+' '+d.fonte+' '+d.tipo+' '+(d.ver||'')).toLowerCase().includes(q)))return false;return true;});}
 function render(){let r=filtered();r.sort((x,y)=>{let a=x[sortK],b=y[sortK];a=a==null?-Infinity:a;b=b==null?-Infinity:b;
   if(typeof a==='string')return sortAsc?(''+a).localeCompare(b):(''+b).localeCompare(a);return sortAsc?a-b:b-a;});
  tb.innerHTML=r.map(d=>'<tr'+(d.ativo?'':' class=off')+'>'+COLS.map(c=>'<td'+(c.l?' class=l':'')+'>'+(c.r?c.r(d):(d[c.k]??'—'))+'</td>').join('')+'</tr>').join('');
  document.getElementById('cnt').textContent=r.length+' / '+DATA.length+' imóveis';
  document.getElementById('cnt2').textContent='';}
-['q','fb','ff','fv','fa','fp'].forEach(id=>document.getElementById(id).addEventListener('input',render));
+['q','fb','ff','fv','fa','fp','fpmin','fpmax'].forEach(id=>document.getElementById(id).addEventListener('input',render));
 document.getElementById('csv').onclick=()=>{const r=filtered();const head=COLS.map(c=>c.k).join(';');
  const body=r.map(d=>COLS.map(c=>(''+(d[c.k]??'')).replace(/;/g,',')).join(';')).join('\n');
  const blob=new Blob([head+'\n'+body],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='imoveis-poa.csv';a.click();};
